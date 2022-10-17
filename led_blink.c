@@ -69,25 +69,25 @@ int __attribute__((noreturn)) main(void)
         /* JOY_UP - grow the LED stack */
         jbc = jc & JOY_UP;
         jbp = jp & JOY_UP;
-        if((jbc != jbp) & !jbc)
+        if((jbc != jbp) && !jbc)
             mask++;
         
         /* JOY_DN - shrink the LED stack */
         jbc = jc & JOY_DN;
         jbp = jp & JOY_DN;
-        if((jbc != jbp) & !jbc)
+        if((jbc != jbp) && !jbc)
             mask--;
         
         /* JOY_LF - decrease the delay */
         jbc = jc & JOY_LF;
         jbp = jp & JOY_LF;
-        if((jbc != jbp) & !jbc)
+        if((jbc != jbp) && !jbc)
             delay -= DELAY_DT;
         
         /* JOY_RT - increase the delay */
         jbc = jc & JOY_RT;
         jbp = jp & JOY_RT;
-        if((jbc != jbp) & !jbc)
+        if((jbc != jbp) && !jbc)
             delay += DELAY_DT;
      
         /* Clamp values */
