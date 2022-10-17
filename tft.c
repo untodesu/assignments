@@ -49,6 +49,8 @@
 #define CCLKSEL_MAX     255
 #define CCLK_MIN        10000000
 #define CCLK_MAX        100000000
+#define FCCO_MIN        275000000
+#define FCCO_MAX        550000000
 
 struct cursor {
     unsigned int choice;
@@ -146,22 +148,27 @@ static void get_config(struct core_config *conf)
 
 static float get_config_freq(const struct core_config *conf)
 {
-    float mod;
-
-    mod = 2.0f * (float)(conf->msel + 1);
-    mod /= (float)(conf->nsel + 1);
-    mod /= (float)(conf->cclksel + 1);
+    float fin, fcco;
 
     switch(LPC_SC->CLKSRCSEL & 0x03) {
         case 0:
-            return 4.0e6f * mod;
+            fin = 4.0e6f;
+            break;
         case 1:
-            return 12.0e6f * mod;
+            fin = 12.0e6f;
+            break;
         case 2:
-            return 32.768e3f * mod;
+            fin = 32.768e3f;
+            break;
         default:
             return 0.0f;
     }
+
+    fcco = (2.0f * (float)(conf->msel + 1) * fin) / (float)(conf->nsel + 1);
+    if(fcco < (float)(FCCO_MIN) || fcco > (float)(FCCO_MAX))
+        return 0.0f;
+    
+    return fcco / (float)(conf->cclksel + 1);
 }
 
 static void print_config(const struct core_config *conf)
@@ -269,6 +276,9 @@ int __attribute__((noreturn)) main(void)
 
     /* redraw status message */
     print_status(STAT_READY);
+
+    jc = 0;
+    jp = 0;
 
     for(;;) {
         /* Query current joystick state */
