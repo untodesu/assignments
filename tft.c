@@ -47,6 +47,7 @@
 #define MSEL_MAX        32767
 #define NSEL_MAX        255
 #define CCLKSEL_MAX     255
+#define CCLK_MIN        10000000
 #define CCLK_MAX        100000000
 
 struct cursor {
@@ -182,7 +183,7 @@ static void apply_config(struct core_config *conf)
 {
     uint32_t scratch;
     float freq = get_config_freq(conf);
-    if(freq <= 0.0f || freq > (float)(CCLK_MAX)) {
+    if(freq <= (float)(CCLK_MIN) || freq > (float)(CCLK_MAX)) {
         get_config(conf);
         print_status(STAT_INVAL);
         return;
