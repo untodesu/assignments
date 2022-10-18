@@ -52,6 +52,18 @@
 #define FCCO_MIN        275000000
 #define FCCO_MAX        550000000
 
+/*
+> MSEL          43
+  NSEL          2
+  CCLKSEL       6
+  Apply
+
+C 86.000            MHz
+R 86.000            MHz
+
+    READY
+*/
+
 struct cursor {
     unsigned int choice;
     unsigned char value;
@@ -237,8 +249,20 @@ static void update_config(struct core_config *conf, unsigned int choice, int add
     }
 }
 
+static void set_led(volatile LPC_GPIO_TypeDef *gpio, int rbit, int set)
+{
+    if(set) {
+        gpio->FIOSET |= (1 << rbit);
+        return;
+    }
+    
+    gpio->FIOCLR |= (1 << rbit);
+}
+
 int __attribute__((noreturn)) main(void)
 {
+    unsigned int bit;
+    unsigned long t, w, v;
     struct cursor cur = { 0 };
     struct core_config conf = { 0 };
     uint32_t jc, jp;
@@ -256,6 +280,18 @@ int __attribute__((noreturn)) main(void)
     LPC_GPIO1->FIODIR &= ~JOY_RT;
     LPC_GPIO1->FIODIR &= ~JOY_DN;
     LPC_GPIO1->FIODIR &= ~JOY_LF;
+
+    /* Set P1.XX (LED stack) for OUTPUT */
+    LPC_GPIO1->FIODIR |= (1U << 28);
+    LPC_GPIO1->FIODIR |= (1U << 29);
+    LPC_GPIO1->FIODIR |= (1U << 31);
+    
+    /* Set P2.XX (LED stack) for OUTPUT */
+    LPC_GPIO2->FIODIR |= (1U << 2);
+    LPC_GPIO2->FIODIR |= (1U << 3);
+    LPC_GPIO2->FIODIR |= (1U << 4);
+    LPC_GPIO2->FIODIR |= (1U << 5);
+    LPC_GPIO2->FIODIR |= (1U << 6);
 
     /* Set generic colors */
     GLCD_SetBackColor(Black);
@@ -280,7 +316,11 @@ int __attribute__((noreturn)) main(void)
     jc = 0;
     jp = 0;
 
-    for(;;) {
+    bit = 0;
+    t = 0;
+    w = 0;
+
+    for(;; t++) {
         /* Query current joystick state */
         jc = LPC_GPIO1->FIOPIN;
         
@@ -319,5 +359,22 @@ int __attribute__((noreturn)) main(void)
         }
 
         jp = jc;
+        
+        if(t < w)
+            continue;
+
+        /* Oleg Vasiliyevich asked for this */
+        /* practically demonstrate frequency changes */
+        v = (unsigned int)(1 << (bit++ % 8));
+        set_led(LPC_GPIO1, 28, v & (1 << 0));
+        set_led(LPC_GPIO1, 29, v & (1 << 1));
+        set_led(LPC_GPIO1, 31, v & (1 << 2));
+        set_led(LPC_GPIO2, 2, v & (1 << 3));
+        set_led(LPC_GPIO2, 3, v & (1 << 4));
+        set_led(LPC_GPIO2, 4, v & (1 << 5));
+        set_led(LPC_GPIO2, 5, v & (1 << 6));
+        set_led(LPC_GPIO2, 6, v & (1 << 7));
+
+        w = t + 50000;
     }
 }
