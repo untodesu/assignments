@@ -1,13 +1,8 @@
-#include <LPC17xx.H>
+#include <lpc17xx.h>
 #include <stdio.h>
 #include <string.h>
 #include "GLCD.h"
-#include "LibraryDisplay.h"
-
-#define JOY_UP (1 << 23)
-#define JOY_RT (1 << 24)
-#define JOY_DN (1 << 25)
-#define JOY_LF (1 << 26)
+#include "lib_joystick.h"
 
 /* choices in the menu */
 #define CHOICE_MIN      0
@@ -51,18 +46,6 @@
 #define CCLK_MAX        100000000
 #define FCCO_MIN        275000000
 #define FCCO_MAX        550000000
-
-/*
-> MSEL          43
-  NSEL          2
-  CCLKSEL       6
-  Apply
-
-C 86.000            MHz
-R 86.000            MHz
-
-    READY
-*/
 
 struct cursor {
     unsigned int choice;
@@ -222,7 +205,7 @@ static void apply_config(struct core_config *conf)
     print_status(STAT_READY);
 }
 
-static void update_config(struct core_config *conf, unsigned int choice, int add)
+static void update_config(struct core_config *conf, unsigned int choice, bool add)
 {
     switch(choice) {
         case CHOICE_MSEL:
@@ -249,37 +232,34 @@ static void update_config(struct core_config *conf, unsigned int choice, int add
     }
 }
 
-static void set_led(volatile LPC_GPIO_TypeDef *gpio, int rbit, int set)
+static void gpio_set_bit(volatile LPC_GPIO_TypeDef *gpio, unsigned int bit, bool set)
 {
-    if(set) {
-        gpio->FIOSET |= (1 << rbit);
-        return;
-    }
-    
-    gpio->FIOCLR |= (1 << rbit);
+    volatile uint32_t *r = set
+        ? &gpio->FIOSET
+        : &gpio->FIOCLR;
+    r[0] |= (1 << bit);
 }
 
 int __attribute__((noreturn)) main(void)
 {
+    unsigned char v;
     unsigned int bit;
-    unsigned long t, w, v;
+    unsigned long t, w;
     struct cursor cur = { 0 };
     struct core_config conf = { 0 };
-    uint32_t jc, jp;
-    uint32_t jbc, jbp;
+    struct joystick j = { 0 };
     
     SystemInit();
     
-    init_display();
+    GLCD_Init();
+    GLCD_SetBackColor(Black);
+    GLCD_SetTextColor(White);
+    GLCD_Clear(Black);
 
     cur.choice = CHOICE_MSEL;
     cur.value = '>';
 
-    /* Set P1.XX (joystick) for INPUT */
-    LPC_GPIO1->FIODIR &= ~JOY_UP;
-    LPC_GPIO1->FIODIR &= ~JOY_RT;
-    LPC_GPIO1->FIODIR &= ~JOY_DN;
-    LPC_GPIO1->FIODIR &= ~JOY_LF;
+    joy_init(&j);
 
     /* Set P1.XX (LED stack) for OUTPUT */
     LPC_GPIO1->FIODIR |= (1U << 28);
@@ -292,11 +272,6 @@ int __attribute__((noreturn)) main(void)
     LPC_GPIO2->FIODIR |= (1U << 4);
     LPC_GPIO2->FIODIR |= (1U << 5);
     LPC_GPIO2->FIODIR |= (1U << 6);
-
-    /* Set generic colors */
-    GLCD_SetBackColor(Black);
-    GLCD_SetTextColor(White);
-    GLCD_Clear(Black);
 
     /* query config */
     get_config(&conf);
@@ -313,67 +288,57 @@ int __attribute__((noreturn)) main(void)
     /* redraw status message */
     print_status(STAT_READY);
 
-    jc = 0;
-    jp = 0;
-
     bit = 0;
     t = 0;
     w = 0;
 
     for(;; t++) {
-        /* Query current joystick state */
-        jc = LPC_GPIO1->FIOPIN;
-        
-        /* JOY_UP - move cursor up */
-        jbc = jc & JOY_UP;
-        jbp = jp & JOY_UP;
-        if((jbc != jbp) && !jbc && cur.choice > CHOICE_MIN) {
+        joy_query(&j);
+
+        /* Move cursor down */
+        if(joy_pressed(&j, JOYSTICK_UP) && cur.choice > CHOICE_MIN) {
             print_status(STAT_READY);
             set_choice(&cur, cur.choice - 1);
         }
-        
-        /* JOY_DN - move cursor down */
-        jbc = jc & JOY_DN;
-        jbp = jp & JOY_DN;
-        if((jbc != jbp) && !jbc && cur.choice < CHOICE_MAX) {
+
+        /* Move cursor up */
+        if(joy_pressed(&j, JOYSTICK_DN) && cur.choice < CHOICE_MAX) {
             print_status(STAT_READY);
             set_choice(&cur, cur.choice + 1);
         }
-        
-        /* JOY_LF - decrease or apply */
-        jbc = jc & JOY_LF;
-        jbp = jp & JOY_LF;
-        if((jbc != jbp) && !jbc) {
+
+        /* Decrease or apply */
+        if(joy_pressed(&j, JOYSTICK_LF)) {
             print_status(STAT_READY);
             update_config(&conf, cur.choice, 0);
             print_config(&conf);
         }
-        
-        /* JOY_RT - increase or apply */
-        jbc = jc & JOY_RT;
-        jbp = jp & JOY_RT;
-        if((jbc != jbp) && !jbc) {
+
+        /* Increase or apply */
+        if(joy_pressed(&j, JOYSTICK_RT)) {
             print_status(STAT_READY);
             update_config(&conf, cur.choice, 1);
             print_config(&conf);
         }
 
-        jp = jc;
-        
-        if(t < w)
-            continue;
+        joy_store(&j);
 
-        /* Oleg Vasiliyevich asked for this */
-        /* practically demonstrate frequency changes */
-        v = (unsigned int)(1 << (bit++ % 8));
-        set_led(LPC_GPIO1, 28, v & (1 << 0));
-        set_led(LPC_GPIO1, 29, v & (1 << 1));
-        set_led(LPC_GPIO1, 31, v & (1 << 2));
-        set_led(LPC_GPIO2, 2, v & (1 << 3));
-        set_led(LPC_GPIO2, 3, v & (1 << 4));
-        set_led(LPC_GPIO2, 4, v & (1 << 5));
-        set_led(LPC_GPIO2, 5, v & (1 << 6));
-        set_led(LPC_GPIO2, 6, v & (1 << 7));
+        if(t < w) {
+            /* Tick-based delay */
+            continue;
+        }
+
+        /* Oleg Vasiliyevich asked for this. */
+        /* Practically demonstrates frequency changes */
+        v = (unsigned char)(1 << (bit++ % 8));
+        gpio_set_bit(LPC_GPIO1, 28, v & (1 << 0));
+        gpio_set_bit(LPC_GPIO1, 29, v & (1 << 1));
+        gpio_set_bit(LPC_GPIO1, 31, v & (1 << 2));
+        gpio_set_bit(LPC_GPIO2, 2, v & (1 << 3));
+        gpio_set_bit(LPC_GPIO2, 3, v & (1 << 4));
+        gpio_set_bit(LPC_GPIO2, 4, v & (1 << 5));
+        gpio_set_bit(LPC_GPIO2, 5, v & (1 << 6));
+        gpio_set_bit(LPC_GPIO2, 6, v & (1 << 7));
 
         w = t + 50000;
     }

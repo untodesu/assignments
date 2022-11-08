@@ -1,5 +1,5 @@
-#ifndef LIB_JOYSTICK_H__
-#define LIB_JOYSTICK_H__ 1
+#ifndef A2446573_3F8C_4717_9270_4C5ED29CBB53
+#define A2446573_3F8C_4717_9270_4C5ED29CBB53
 #include <lpc17xx.h>
 #include <stdbool.h>
 
@@ -19,4 +19,4 @@ void joy_query(struct joystick *j);
 void joy_store(struct joystick *j);
 bool joy_pressed(struct joystick *j, unsigned long button);
 
-#endif /* LIB_JOYSTICK_H__ */
+#endif /* A2446573_3F8C_4717_9270_4C5ED29CBB53 */

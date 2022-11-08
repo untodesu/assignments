@@ -1,9 +1,9 @@
-#include <LPC17xx.H>
+#include <lpc17xx.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
 #include "GLCD.h"
-#include "LibraryDisplay.h"
+#include "lib_joystick.h"
 
 /* Screen modes */
 #define SCREEN_MENU     0x00
@@ -24,27 +24,13 @@
 #define INIT_BGC Black
 #define INIT_FGC White
 
-struct joy {
-    uint32_t cs; /* current state */
-    uint32_t ps; /* previous state */
-};
-
 typedef void(*screen_t)(void);
 static screen_t screens[SCREEN_COUNT] = { 0 };
 static unsigned int current_screen = SCREEN_MENU;
-static struct joy joystick = { 0 };
+static struct joystick j = { 0 };
 static unsigned long ticks = 0;
 static unsigned short bgc = INIT_BGC;
 static unsigned short fgc = INIT_FGC;
-
-static bool is_joy_pressed(const struct joy *j, uint32_t button)
-{
-    uint32_t cb = j->cs & button;
-    uint32_t pb = j->ps & button;
-    if((cb != pb) && !cb)
-        return true;
-    return false;
-}
 
 static void set_screen(unsigned int screen)
 {
@@ -1003,19 +989,19 @@ static void draw_menu(void)
     static char str[128] = { 0 };
     static bool blinks = true;
 
-    if(is_joy_pressed(&joystick, JOY_UP)) {
+    if(joy_pressed(&j, JOY_UP)) {
         GLCD_ClearLn(MENU_INFOLN);
         blinks = true;
         choice--;
     }
 
-    if(is_joy_pressed(&joystick, JOY_DN)) {
+    if(joy_pressed(&j, JOY_DN)) {
         GLCD_ClearLn(MENU_INFOLN);
         blinks = true;
         choice++;
     }
 
-    if(is_joy_pressed(&joystick, JOY_LF) || is_joy_pressed(&joystick, JOY_RT)) {
+    if(joy_pressed(&j, JOY_LF) || joy_pressed(&j, JOY_RT)) {
         set_screen(choice);
         return;
     }
@@ -1067,7 +1053,7 @@ static void draw_text(void)
         "gula nisi. Aenean vitae imperdiet justo.",
     };
 
-    if(is_joy_pressed(&joystick, JOY_LF) || is_joy_pressed(&joystick, JOY_RT)) {
+    if(joy_pressed(&j, JOY_LF) || joy_pressed(&j, JOY_RT)) {
         set_screen(SCREEN_MENU);
         return;
     }
@@ -1081,7 +1067,7 @@ static void draw_figure(void)
 {
     static unsigned short ctr = 0;
 
-    if(is_joy_pressed(&joystick, JOY_LF) || is_joy_pressed(&joystick, JOY_RT)) {
+    if(joy_pressed(&j, JOY_LF) || joy_pressed(&j, JOY_RT)) {
         set_screen(SCREEN_MENU);
         return;
     }
@@ -1095,7 +1081,7 @@ static void draw_figure(void)
 
 static void draw_bitmap(void)
 {
-    if(is_joy_pressed(&joystick, JOY_LF) || is_joy_pressed(&joystick, JOY_RT)) {
+    if(joy_pressed(&j, JOY_LF) || joy_pressed(&j, JOY_RT)) {
         set_screen(SCREEN_MENU);
         return;
     }
@@ -1124,12 +1110,12 @@ int __attribute__((noreturn)) main(void)
     /* Start at MENU */
     set_screen(SCREEN_MENU);
 
-    joystick.cs = 0;
-    joystick.ps = 0;
+    joy_init(&j);
+
     for(;; ticks++) {
-        joystick.cs = LPC_GPIO1->FIOPIN;
+        joy_query(&j);
         if(screens[current_screen])
             screens[current_screen]();
-        joystick.ps = joystick.cs;
+        joy_store(&j);
     }
 }
