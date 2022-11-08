@@ -1,0 +1,14 @@
+{
+    "configurations": [
+        {
+            "name": "default",
+            "includePath": [
+                "${workspaceFolder}/include",
+                "${default}"
+            ],
+            "cStandard": "gnu89",
+            "intelliSenseMode": "gcc-arm"
+        }
+    ],
+    "version": 4
+}

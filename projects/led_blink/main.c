@@ -1,5 +1,12 @@
 #include <lpc17xx.h>
 
+/* Joystick attached to GPIO pins */
+#define JOYSTICK_UP (1 << 23)
+#define JOYSTICK_RT (1 << 24)
+#define JOYSTICK_DN (1 << 25)
+#define JOYSTICK_LF (1 << 26)
+
+
 #define MASK_MIN 1
 #define MASK_MAX 8
 #define MASK_DEFAULT MASK_MAX

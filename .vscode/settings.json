@@ -1,0 +1,7 @@
+{
+    "files.associations": {
+        "lpc17xx.h": "c",
+        "core_cm3.h": "c",
+        "stdint.h": "c"
+    }
+}
