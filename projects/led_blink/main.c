@@ -12,7 +12,7 @@ static void gpio_set_bit(volatile LPC_GPIO_TypeDef *gpio, unsigned int bit, bool
     volatile uint32_t *r = set
         ? &gpio->FIOSET
         : &gpio->FIOCLR;
-    r[0] |= (1 << bit);
+    r[0] |= (1U << bit);
 }
 
 int __attribute__((noreturn)) main(void)
@@ -29,16 +29,16 @@ int __attribute__((noreturn)) main(void)
     joy_init(&j);
 
     /* Set P1.XX (LED stack) for OUTPUT */
-    LPC_GPIO1->FIODIR |= (1 << 28);
-    LPC_GPIO1->FIODIR |= (1 << 29);
+    LPC_GPIO1->FIODIR |= (1U << 28);
+    LPC_GPIO1->FIODIR |= (1U << 29);
     LPC_GPIO1->FIODIR |= (1U << 31);
     
     /* Set P2.XX (LED stack) for OUTPUT */
-    LPC_GPIO2->FIODIR |= (1 << 2);
-    LPC_GPIO2->FIODIR |= (1 << 3);
-    LPC_GPIO2->FIODIR |= (1 << 4);
-    LPC_GPIO2->FIODIR |= (1 << 5);
-    LPC_GPIO2->FIODIR |= (1 << 6);
+    LPC_GPIO2->FIODIR |= (1U << 2);
+    LPC_GPIO2->FIODIR |= (1U << 3);
+    LPC_GPIO2->FIODIR |= (1U << 4);
+    LPC_GPIO2->FIODIR |= (1U << 5);
+    LPC_GPIO2->FIODIR |= (1U << 6);
     
     bit = 0;
     mask = MASK_MIN;
@@ -63,7 +63,7 @@ int __attribute__((noreturn)) main(void)
         }
 
         /* Convert counter to a bitmask */
-        v = (unsigned char)(1 << (bit++ % mask));
+        v = (unsigned char)(1U << (bit++ % mask));
         gpio_set_bit(LPC_GPIO1, 28, v & (1 << 0));
         gpio_set_bit(LPC_GPIO1, 29, v & (1 << 1));
         gpio_set_bit(LPC_GPIO1, 31, v & (1 << 2));

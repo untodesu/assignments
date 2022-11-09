@@ -1,4 +1,4 @@
-#include "joystick.h"
+#include "lib_joystick.h"
 
 void joy_init(struct joystick *j)
 {

@@ -4,10 +4,10 @@
 #include <stdbool.h>
 
 /* Joystick attached to GPIO pins */
-#define JOYSTICK_UP (1 << 23)
-#define JOYSTICK_RT (1 << 24)
-#define JOYSTICK_DN (1 << 25)
-#define JOYSTICK_LF (1 << 26)
+#define JOYSTICK_UP (1U << 23)
+#define JOYSTICK_RT (1U << 24)
+#define JOYSTICK_DN (1U << 25)
+#define JOYSTICK_LF (1U << 26)
 
 struct joystick {
     unsigned long cs;

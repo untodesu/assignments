@@ -237,7 +237,7 @@ static void gpio_set_bit(volatile LPC_GPIO_TypeDef *gpio, unsigned int bit, bool
     volatile uint32_t *r = set
         ? &gpio->FIOSET
         : &gpio->FIOCLR;
-    r[0] |= (1 << bit);
+    r[0] |= (1U << bit);
 }
 
 int __attribute__((noreturn)) main(void)
