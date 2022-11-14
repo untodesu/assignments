@@ -306,6 +306,8 @@ int __attribute__((noreturn)) main(void)
         
         if(joy_pressed(&j, JOYSTICK_LF))
             st_counting = !st_counting;
+        if(joy_pressed(&j, JOYSTICK_DN))
+            st_millis = 0;
         
         if(t % 5000 == 0) {
             ms = st_millis % 1000;
