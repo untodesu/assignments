@@ -10,7 +10,7 @@
 #define LCD_LENGTH  (LCD_WIDTH * LCD_HEIGHT)
 
 struct bfont {
-    bool flip_h;
+    bool little_endian;
     size_t char_width;
     size_t char_height;
     size_t ascii_offset;
