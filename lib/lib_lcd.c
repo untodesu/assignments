@@ -1,4 +1,5 @@
 #include <stdbool.h>
+#include <string.h>
 #include "lib_lcd.h"
 
 #define LCD_PIN_CS  0x06
@@ -39,19 +40,28 @@ static void write_cmd(uint8_t value)
     gpio_set_bit(LPC_GPIO0, LCD_PIN_CS, true);
 }
 
-static void write_dat(uint16_t value)
+static void write_begin(void)
 {
     gpio_set_bit(LPC_GPIO0, LCD_PIN_CS, false);
     spi_write(SPI_START | SPI_WRITE | SPI_DATA);
-    spi_write((value & 0xFF00) >> 8);
-    spi_write((value & 0x00FF));
-    gpio_set_bit(LPC_GPIO0, LCD_PIN_CS, true);
 }
 
-static void write_dat_only(uint16_t value)
+static void write_value(uint16_t value)
 {
     spi_write((value & 0xFF00) >> 8);
     spi_write((value & 0x00FF));
+}
+
+static void write_end(void)
+{
+    gpio_set_bit(LPC_GPIO0, LCD_PIN_CS, true);
+}
+
+static void write_dat(uint16_t value)
+{
+    write_begin();
+    write_value(value);
+    write_end();
 }
 
 static void write_reg(uint8_t reg, uint16_t value)
@@ -60,27 +70,184 @@ static void write_reg(uint8_t reg, uint16_t value)
     write_dat(value);
 }
 
-static void write_buf(const uint16_t *buffer, size_t size)
+static void write_batch(uint16_t value, size_t size)
 {
-    gpio_set_bit(LPC_GPIO0, LCD_PIN_CS, false);
-    spi_write(SPI_START | SPI_WRITE | SPI_DATA);
+    write_begin();
     while(size--)
-        write_dat_only(*buffer++);
-    gpio_set_bit(LPC_GPIO0, LCD_PIN_CS, true);
+        write_value(value);
+    write_end();
 }
 
-/* We use a backbuffer to provide
- * a simple framebuffer-like object
- * for possibly any code to use. We
- * submit backbuffer data infrequently. */
-uint16_t lcd_backbuffer[LCD_LENGTH] = { 0 };
+#if 0
+static void write_buf(const uint16_t *buffer, size_t size)
+{
+    write_begin();
+    while(size--)
+        write_value(*buffer++);
+    write_end();
+}
+#endif
+
+static uint16_t read_dat(void)
+{
+    uint16_t value = 0;
+    gpio_set_bit(LPC_GPIO0, LCD_PIN_CS, false);
+    spi_write(SPI_START | SPI_READ | SPI_DATA);
+    spi_write(0x00);
+    value |= (spi_write(0x00) << 8) & 0xFF00;
+    value |= (spi_write(0x00) << 0) & 0x00FF;
+    gpio_set_bit(LPC_GPIO0, LCD_PIN_CS, true);
+    return value;
+}
+
+static uint16_t read_reg(uint8_t reg)
+{
+    write_cmd(reg);
+    return read_dat();
+}
+
+#define DELAY_2N 18
+static void delay(int cnt)
+{
+    cnt <<= DELAY_2N;
+    while (cnt--);
+}
 
 void lcd_init(void)
 {
-    /* IDK yet, probably a copy of GLCD_Init code here */
+    unsigned short driver_code;
+
+    /* Enable clock for SSP1 */
+    LPC_SC->PCONP |= 0x00000400;
+    LPC_SC->PCLKSEL0 |= 0x00200000;
+
+    /* Configure the LCD Control pins */
+    LPC_PINCON->PINSEL9 &= 0xF0FFFFFF;
+    LPC_GPIO4->FIODIR |= 0x30000000;
+    LPC_GPIO4->FIOSET = 0x20000000;
+
+    /* SSEL1 is GPIO output set to high */
+    LPC_GPIO0->FIODIR   |= 0x00000040;
+    LPC_GPIO0->FIOSET    = 0x00000040;
+    LPC_PINCON->PINSEL0 &= 0xFFF03FFF;
+    LPC_PINCON->PINSEL0 |= 0x000A8000;
+
+    /* Enable SPI in Master Mode, CPOL=1, CPHA=1 */
+    /* Max. 25 MBit used for Data Transfer @ 100MHz */
+    LPC_SSP1->CR0 = 0xC7;
+    LPC_SSP1->CPSR = 0x02;
+    LPC_SSP1->CR1 = 0x02;
+
+    /* Delay 50 ms */
+    delay(5);
+
+    driver_code = read_reg(0x00);
+
+    /* Start Initial Sequence */
+    write_reg(0x01, 0x0100);    /* Set SS bit                         */
+    write_reg(0x02, 0x0700);    /* Set 1 line inversion               */
+    write_reg(0x04, 0x0000);    /* Resize register                    */
+    write_reg(0x08, 0x0207);    /* 2 lines front, 7 back porch        */
+    write_reg(0x09, 0x0000);    /* Set non-disp area refresh cyc ISC  */
+    write_reg(0x0A, 0x0000);    /* FMARK function                     */
+    write_reg(0x0C, 0x0000);    /* RGB interface setting              */
+    write_reg(0x0D, 0x0000);    /* Frame marker Position              */
+    write_reg(0x0F, 0x0000);    /* RGB interface polarity             */
+
+    /* Power On sequence -------------------------------------------------------*/
+    write_reg(0x10, 0x0000);    /* Reset Power Control 1              */
+    write_reg(0x11, 0x0000);    /* Reset Power Control 2              */
+    write_reg(0x12, 0x0000);    /* Reset Power Control 3              */
+    write_reg(0x13, 0x0000);    /* Reset Power Control 4              */
+    delay(20);                  /* Discharge cap power voltage (200ms)*/
+
+    write_reg(0x10, 0x12B0);    /* SAP, BT[3:0], AP, DSTB, SLP, STB   */
+    write_reg(0x11, 0x0007);    /* DC1[2:0], DC0[2:0], VC[2:0]        */
+    delay(5);                   /* Delay 50 ms                        */
+  
+    write_reg(0x12, 0x01BD);    /* VREG1OUT voltage                   */
+    delay(5);                   /* Delay 50 ms                        */
+
+    write_reg(0x13, 0x1400);    /* VDV[4:0] for VCOM amplitude        */
+    write_reg(0x29, 0x000E);    /* VCM[4:0] for VCOMH                 */
+    delay(5);                   /* Delay 50 ms                        */
+
+    write_reg(0x20, 0x0000);    /* GRAM horizontal Address            */
+    write_reg(0x21, 0x0000);    /* GRAM Vertical Address              */
+
+    /* Adjust the Gamma Curve --------------------------------------------------*/
+    if (driver_code == 0x5408) {
+        write_reg(0x30, 0x0B0D);
+        write_reg(0x31, 0x1923);
+        write_reg(0x32, 0x1C26);
+        write_reg(0x33, 0x261C);
+        write_reg(0x34, 0x2419);
+        write_reg(0x35, 0x0D0B);
+        write_reg(0x36, 0x1006);
+        write_reg(0x37, 0x0610);
+        write_reg(0x38, 0x0706);
+        write_reg(0x39, 0x0304);
+        write_reg(0x3A, 0x0E05);
+        write_reg(0x3B, 0x0E01);
+        write_reg(0x3C, 0x010E);
+        write_reg(0x3D, 0x050E);
+        write_reg(0x3E, 0x0403);
+        write_reg(0x3F, 0x0607);
+    }
+    else if (driver_code == 0xC990) {
+        write_reg(0x30, 0x0006);
+        write_reg(0x31, 0x0101);
+        write_reg(0x32, 0x0003);
+        write_reg(0x35, 0x0106);
+        write_reg(0x36, 0x0B02);
+        write_reg(0x37, 0x0302);
+        write_reg(0x38, 0x0707);
+        write_reg(0x39, 0x0007);
+        write_reg(0x3C, 0x0600);
+        write_reg(0x3D, 0x020B);
+    }
+
+    /* Set GRAM area */
+    write_reg(0x50, 0x0000);            /* Horizontal GRAM Start Address      */
+    write_reg(0x51, (LCD_HEIGHT - 1));  /* Horizontal GRAM End   Address      */
+    write_reg(0x52, 0x0000);            /* Vertical   GRAM Start Address      */
+    write_reg(0x53, (LCD_WIDTH - 1));   /* Vertical   GRAM End   Address      */
+    write_reg(0x60, 0xA700);            /* Gate Scan Line                     */
+    if (driver_code == 0x5408)          /* LCD with touch                     */
+        write_reg(0x60, 0xA700);        /* Gate Scan Line                     */
+    if (driver_code == 0xC990)          /* LCD without touch                  */
+        write_reg(0x60, 0x2700);        /* Gate Scan Line                     */
+    write_reg(0x61, 0x0001);            /* NDL,VLE, REV                       */
+    write_reg(0x6A, 0x0000);            /* Set scrolling line                 */
+
+    /* Partial Display Control */
+    write_reg(0x80, 0x0000);
+    write_reg(0x81, 0x0000);
+    write_reg(0x82, 0x0000);
+    write_reg(0x83, 0x0000);
+    write_reg(0x84, 0x0000);
+    write_reg(0x85, 0x0000);
+
+    /* Panel Control */
+    write_reg(0x90, 0x0010);
+    write_reg(0x92, 0x0000);
+    write_reg(0x93, 0x0003);
+    write_reg(0x95, 0x0110);
+    write_reg(0x97, 0x0000);
+    write_reg(0x98, 0x0000);
+
+    /* Set GRAM write direction  */
+    write_reg(0x03, 0x1038);
+
+    /* 262K color and display ON */
+    write_reg(0x07, 0x0137);
+
+    LPC_GPIO4->FIOSET = 0x10000000;
+    
+    lcd_clear(0x0000);
 }
 
-void lcd_submit(void)
+void lcd_clear(uint16_t color)
 {
     /* Set draw region */
     write_reg(0x50, (uint16_t)(0));
@@ -90,62 +257,72 @@ void lcd_submit(void)
     write_reg(0x20, (uint16_t)(0));
     write_reg(0x21, (uint16_t)(0));
 
-    /* Dump the backbuffer */
     write_cmd(0x22);
-    write_buf(lcd_backbuffer, LCD_LENGTH);
+    write_batch(color, LCD_LENGTH);
 }
 
-void lcd_clear(uint16_t color)
+void lcd_rect(uint16_t color, size_t x, size_t y, size_t width, size_t height)
 {
-    size_t i;
-    for(i = 0; i < LCD_LENGTH; i++)
-        lcd_backbuffer[i] = color;
-}
+    /* Set draw region */
+    x = LCD_WIDTH - x - width;
+    write_reg(0x50, (uint16_t)(y));
+    write_reg(0x51, (uint16_t)(y + height - 1));
+    write_reg(0x52, (uint16_t)(x));
+    write_reg(0x53, (uint16_t)(x + width - 1));
+    write_reg(0x20, (uint16_t)(y));
+    write_reg(0x21, (uint16_t)(x));
 
-void lcd_rect(uint16_t color, size_t x, size_t y, size_t width, size_t height, bool fill)
-{
-    size_t i;
-    size_t begin, end;
-
-    if(fill) {
-        begin = LCD_PIX(x, y);
-        end = LCD_PIX(x + width, y + height);
-        for(i = begin; i < end; i++)
-            lcd_backbuffer[i] = color;
-        return;
-    }
-
-    for(i = 0; i < width; i++) {
-        lcd_backbuffer[LCD_PIX(x + i, y)] = color;
-        lcd_backbuffer[LCD_PIX(x + i, y + height)] = color;
-    }
-        
-    for(i = 0; i < height; i++) {
-        lcd_backbuffer[LCD_PIX(x, y + i)] = color;
-        lcd_backbuffer[LCD_PIX(x + width, y + i)] = color;
-    }
+    /* draw */
+    write_cmd(0x22);
+    write_batch(color, width * height);
 }
 
 void lcd_bfont_char(const struct bfont *font, uint16_t fg, uint16_t bg, size_t cx, size_t cy, char c)
 {
-    size_t i, j, w, pix;
-    const uint8_t *dat = &font->data[c * font->char_height];
+    size_t i, j, k;
+    size_t numb = font->char_width / 8;
+    const uint8_t *dat = &font->data[(c - font->ascii_offset) * font->char_height * numb];
 
     cx *= font->char_width;
     cy *= font->char_height;
+    cx = LCD_WIDTH - cx - font->char_width;
 
-    w = 1;
-    for(j = 0; j < font->char_height; j++) {
-        for(i = 0; i < font->char_width; i++) {
-            pix = LCD_PIX(cx + i, cy + j);
-            if(dat[0] & (1 << i))
-                lcd_backbuffer[pix] = fg;
-            else
-                lcd_backbuffer[pix] = bg;
-            if((i + 1) / (w * 8)) {
-                dat++;
-                w++;
-            }
+    /* Set draw region */
+    write_reg(0x50, (uint16_t)(cy));
+    write_reg(0x51, (uint16_t)(cy + font->char_height - 1));
+    write_reg(0x52, (uint16_t)(cx));
+    write_reg(0x53, (uint16_t)(cx + font->char_width - 1));
+    write_reg(0x20, (uint16_t)(cy));
+    write_reg(0x21, (uint16_t)(cx));
+
+    write_cmd(0x22);
+    write_begin();
+
+    if(font->flip_h) {
+        for(i = 0; i < font->char_height; i++) {
+            for(j = numb; j != 0; j--)
+                for(k = 8; k != 0; k--)
+                    write_value((dat[j - 1] & (1 << (k - 1))) ? fg : bg);
+            dat += numb;
         }
+    }
+    else {
+        for(i = 0; i < font->char_height; i++) {
+            for(j = 0; j < numb; j++)
+                for(k = 0; k < 8; k++)
+                    write_value((dat[j] & (1 << k)) ? fg : bg);
+            dat += numb;
+        }
+    }
+
+    write_end();
+}
+
+void lcd_bfont_string(const struct bfont *font, uint16_t fg, uint16_t bg, size_t cx, size_t cy, const char *s)
+{
+    while(*s) {
+        lcd_bfont_char(font, fg, bg, cx, cy, *s);
+        cx++;
+        s++;
     }
 }
