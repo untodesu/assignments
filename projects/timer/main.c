@@ -319,7 +319,7 @@ int __attribute__((noreturn)) main(void)
             h = m / 60;
             snprintf(str, sizeof(str), "%002zu:%02zu:%02zu.%03zu", h, m % 60, s % 60, ms);
             lcd_bfont_string(&IBM_8x16, 0xFFFF, 0x0000, 1, 1, str);
-            lcd_bfont_string(&IBM_8x16, st_counting ? 0x07EF : 0xFA08, 0x0000, 1, 2, st_counting ? "COUNT" : "PAUSE");
+            lcd_bfont_string(&IBM_8x16, st_counting ? 0x07EF : 0xFA08, 0x0000, 1, 3, st_counting ? "COUNT" : "PAUSE");
         }
         
         joy_store(&j);
