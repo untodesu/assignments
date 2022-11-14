@@ -304,17 +304,20 @@ int __attribute__((noreturn)) main(void)
     for(t = 0;; t++) {
         joy_query(&j);
         
+        if(joy_pressed(&j, JOYSTICK_DN)) {
+            lcd_clear(0x0000);
+            st_millis = 0;
+        }
+        
         if(joy_pressed(&j, JOYSTICK_LF))
             st_counting = !st_counting;
-        if(joy_pressed(&j, JOYSTICK_DN))
-            st_millis = 0;
         
         if(t % 5000 == 0) {
             ms = st_millis % 1000;
             s = st_millis / 1000;
             m = s / 60;
             h = m / 60;
-            snprintf(str, sizeof(str), "%002zu:%02zu:%02zu.%03zu", h, m, s, ms);
+            snprintf(str, sizeof(str), "%002zu:%02zu:%02zu.%03zu", h, m % 60, s % 60, ms);
             lcd_bfont_string(&IBM_8x16, 0xFFFF, 0x0000, 1, 1, str);
             lcd_bfont_string(&IBM_8x16, st_counting ? 0x07EF : 0xFA08, 0x0000, 1, 2, st_counting ? "COUNT" : "PAUSE");
         }
