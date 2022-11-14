@@ -298,7 +298,7 @@ void lcd_bfont_char(const struct bfont *font, uint16_t fg, uint16_t bg, size_t c
     write_cmd(0x22);
     write_begin();
 
-    if(font->flip_h) {
+    if(font->little_endian) {
         for(i = 0; i < font->char_height; i++) {
             for(j = numb; j != 0; j--)
                 for(k = 8; k != 0; k--)
