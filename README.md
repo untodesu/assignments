@@ -1,6 +1,5 @@
 # Description
-This repository contains sources for assignments me and my team were given on the "Hardware Interfaces of Electronic Devices" subject.  
-The goal of this repository is to _preserve_ my code for "the next generation of students" and to make sure I never lose that very code on my USB stick. 
+This repository contains sources for assignments me and my team were given on the "Hardware Interfaces of Electronic Devices" subject. The goal of this repository is to _preserve_ my code for "the next generation of students" and to make sure I never lose that very code on my USB stick. 
 
 ## Libraries
 #### Joystick library
