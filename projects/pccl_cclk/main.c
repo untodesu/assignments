@@ -1,8 +1,9 @@
 #include <lpc17xx.h>
-#include <stdio.h>
 #include <string.h>
-#include "GLCD.h"
-#include "lib_joystick.h"
+#include "lib_joy.h"
+#include "lib_lcd.h"
+#include "lib_lcd_ibm_8x16.h"
+#include "lib_led.h"
 
 /* choices in the menu */
 #define CHOICE_MIN      0
@@ -86,21 +87,17 @@ static void print_choice_info(unsigned int choice)
             return;
     }
     
-    GLCD_DisplayString(INFO_ROW_BASE + choice, INFO_COL_BASE, (unsigned char *)buffer);
+    lcd_bprintf(&IBM_8x16, 0xFFFF, 0x0000, INFO_ROW_BASE + choice, INFO_COL_BASE, "%s", (unsigned char *)buffer);
 }
 
 static void print_choice_value(unsigned int choice, unsigned int value)
 {
-    char buffer[64] = { 0 };
-    snprintf(buffer, sizeof(buffer), "%-5u", value + 1);
-    GLCD_DisplayString(VALUE_ROW_BASE + choice, VALUE_COL_BASE, (unsigned char *)buffer);
+    lcd_bprintf(&IBM_8x16, 0xFFFF, 0x0000, VALUE_ROW_BASE + choice, VALUE_COL_BASE, "%-5u", value + 1);
 }
 
 static void print_frequency(unsigned int id, float value)
 {
-    char buffer[64] = { 0 };
-    unsigned char prefix;
-    
+    char prefix;
     switch(id) {
         case FREQ_REAL:
             prefix = 'R';
@@ -111,10 +108,9 @@ static void print_frequency(unsigned int id, float value)
         default:
             return;
     }
-   
-    snprintf(buffer, sizeof(buffer), "%-12.03f MHz", value * 1.0e-6f);
-    GLCD_DisplayChar(FREQ_ROW_BASE + id, FINF_COL_BASE, prefix);
-    GLCD_DisplayString(FREQ_ROW_BASE + id, FREQ_COL_BASE, (unsigned char *)buffer);
+
+    lcd_bprintf(&IBM_8x16, 0xFFFF, 0x0000, FREQ_ROW_BASE + id, FINF_COL_BASE, "%c", prefix);
+    lcd_bprintf(&IBM_8x16, 0xFFFF, 0x0000, FREQ_ROW_BASE + id, FREQ_COL_BASE, "%-12.03f MHz", value * 1.0e-6f);
 }
 
 static void print_status(unsigned int status)
@@ -131,7 +127,7 @@ static void print_status(unsigned int status)
             return;
     }
     
-    GLCD_DisplayString(STAT_ROW_BASE, STAT_COL_BASE, (unsigned char *)buffer);
+    lcd_bprintf(&IBM_8x16, 0xFFFF, 0x0000, STAT_ROW_BASE, STAT_COL_BASE, "%s", buffer);
 }
 
 static void get_config(struct core_config *conf)
@@ -205,7 +201,7 @@ static void apply_config(struct core_config *conf)
     print_status(STAT_READY);
 }
 
-static void update_config(struct core_config *conf, unsigned int choice, bool add)
+static void update_config(struct core_config *conf, unsigned int choice, int add)
 {
     switch(choice) {
         case CHOICE_MSEL:
@@ -232,46 +228,22 @@ static void update_config(struct core_config *conf, unsigned int choice, bool ad
     }
 }
 
-static void gpio_set_bit(volatile LPC_GPIO_TypeDef *gpio, unsigned int bit, bool set)
-{
-    volatile uint32_t *r = set
-        ? &gpio->FIOSET
-        : &gpio->FIOCLR;
-    r[0] |= (1U << bit);
-}
-
 int __attribute__((noreturn)) main(void)
 {
-    unsigned char v;
     unsigned int bit;
     unsigned long t, w;
     struct cursor cur = { 0 };
     struct core_config conf = { 0 };
-    struct joystick j = { 0 };
     
     SystemInit();
-    
-    GLCD_Init();
-    GLCD_SetBackColor(Black);
-    GLCD_SetTextColor(White);
-    GLCD_Clear(Black);
+    joy_init();
+    led_init();
+    lcd_init();
 
+    lcd_clear(0x0000);
+    
     cur.choice = CHOICE_MSEL;
     cur.value = '>';
-
-    joy_init(&j);
-
-    /* Set P1.XX (LED stack) for OUTPUT */
-    LPC_GPIO1->FIODIR |= (1U << 28);
-    LPC_GPIO1->FIODIR |= (1U << 29);
-    LPC_GPIO1->FIODIR |= (1U << 31);
-    
-    /* Set P2.XX (LED stack) for OUTPUT */
-    LPC_GPIO2->FIODIR |= (1U << 2);
-    LPC_GPIO2->FIODIR |= (1U << 3);
-    LPC_GPIO2->FIODIR |= (1U << 4);
-    LPC_GPIO2->FIODIR |= (1U << 5);
-    LPC_GPIO2->FIODIR |= (1U << 6);
 
     /* query config */
     get_config(&conf);
@@ -293,35 +265,35 @@ int __attribute__((noreturn)) main(void)
     w = 0;
 
     for(;; t++) {
-        joy_query(&j);
+        joy_query();
 
         /* Move cursor down */
-        if(joy_pressed(&j, JOYSTICK_UP) && cur.choice > CHOICE_MIN) {
+        if(joy_pressed(JOY_UP) && cur.choice > CHOICE_MIN) {
             print_status(STAT_READY);
             set_choice(&cur, cur.choice - 1);
         }
 
         /* Move cursor up */
-        if(joy_pressed(&j, JOYSTICK_DN) && cur.choice < CHOICE_MAX) {
+        if(joy_pressed(JOY_DN) && cur.choice < CHOICE_MAX) {
             print_status(STAT_READY);
             set_choice(&cur, cur.choice + 1);
         }
 
         /* Decrease or apply */
-        if(joy_pressed(&j, JOYSTICK_LF)) {
+        if(joy_pressed(JOY_LF)) {
             print_status(STAT_READY);
             update_config(&conf, cur.choice, 0);
             print_config(&conf);
         }
 
         /* Increase or apply */
-        if(joy_pressed(&j, JOYSTICK_RT)) {
+        if(joy_pressed(JOY_RT)) {
             print_status(STAT_READY);
             update_config(&conf, cur.choice, 1);
             print_config(&conf);
         }
 
-        joy_store(&j);
+        joy_store();
 
         if(t < w) {
             /* Tick-based delay */
@@ -330,15 +302,7 @@ int __attribute__((noreturn)) main(void)
 
         /* Oleg Vasiliyevich asked for this. */
         /* Practically demonstrates frequency changes */
-        v = (unsigned char)(1 << (bit++ % 8));
-        gpio_set_bit(LPC_GPIO1, 28, v & (1 << 0));
-        gpio_set_bit(LPC_GPIO1, 29, v & (1 << 1));
-        gpio_set_bit(LPC_GPIO1, 31, v & (1 << 2));
-        gpio_set_bit(LPC_GPIO2, 2, v & (1 << 3));
-        gpio_set_bit(LPC_GPIO2, 3, v & (1 << 4));
-        gpio_set_bit(LPC_GPIO2, 4, v & (1 << 5));
-        gpio_set_bit(LPC_GPIO2, 5, v & (1 << 6));
-        gpio_set_bit(LPC_GPIO2, 6, v & (1 << 7));
+        led_set((uint8_t)(1U << (bit++ % 8)));
 
         w = t + 50000;
     }

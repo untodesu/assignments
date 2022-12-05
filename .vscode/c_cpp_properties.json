@@ -7,7 +7,7 @@
                 "${workspaceFolder}/lib",
                 "${default}"
             ],
-            "cStandard": "gnu89",
+            "cStandard": "gnu99",
             "intelliSenseMode": "gcc-arm"
         }
     ],

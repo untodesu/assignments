@@ -1,4 +1,4 @@
-#include <stddef.h>
+#include <lpc17xx.h>
 #include <string.h>
 #include "lib_uart.h"
 
@@ -71,7 +71,7 @@ void UART1_IRQHandler(void)
 }
 
 extern uint32_t SystemFrequency;
-void uart_init(size_t speed, unsigned int wordsize, int parity, int doublestop)
+void uart_init(size_t speed, uint8_t mode)
 {
     uint8_t lcr;
     uint32_t divisor, pclk;
@@ -94,30 +94,12 @@ void uart_init(size_t speed, unsigned int wordsize, int parity, int doublestop)
             break;
 	}
     
-    if(wordsize < 5)
-        wordsize = 5;
-    if(wordsize > 8)
-        wordsize = 8;
-    lcr = ((wordsize - 5) & 0x03);
-
-    switch(parity) {
-        case UART_ODDPAR:
-            lcr |= 0x08;
-            break;
-        case UART_EVENPAR:
-            lcr |= 0x18;
-            break;
-    }
-    
-    if(doublestop)
-        lcr |= 0x04;
-    
 	divisor = pclk / 16 / speed;
 
-    LPC_UART1->LCR = lcr | 0x80;
+    LPC_UART1->LCR = mode | 0x80;
     LPC_UART1->DLM = divisor / 256;
     LPC_UART1->DLL = divisor % 256;
-	LPC_UART1->LCR = lcr;
+	LPC_UART1->LCR = mode;
     LPC_UART1->FCR = 0x07;
 
     NVIC_EnableIRQ(UART1_IRQn);
@@ -125,9 +107,8 @@ void uart_init(size_t speed, unsigned int wordsize, int parity, int doublestop)
     LPC_UART1->IER = IER_THRE | IER_RLS | IER_RBR;
 }
 
-size_t uart_write(const void *s, size_t n)
+void uart_write(const void *s, size_t n)
 {
-    size_t tmp = n;
     const uint8_t *sp = s;
     
     LPC_UART1->IER &= ~IER_RBR;
@@ -139,8 +120,6 @@ size_t uart_write(const void *s, size_t n)
     }
 
     LPC_UART1->IER |= IER_RBR;
-    
-    return tmp;
 }
 
 size_t uart_read(void *s, size_t n)
