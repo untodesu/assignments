@@ -12,8 +12,4 @@ void uart_init(size_t speed, unsigned int wordsize, int parity, int doublestop);
 size_t uart_write(const void *s, size_t n);
 size_t uart_read(void *s, size_t n);
 
-void uart_putchar(int ch);
-int uart_getchar(void);
-
-
 #endif
