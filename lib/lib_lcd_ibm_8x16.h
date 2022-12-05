@@ -4,7 +4,6 @@
 
 extern const uint8_t IBM_8x16_bitmap[];
 static struct bfont IBM_8x16 = {
-    .little_endian = false,
     .char_width = 8,
     .char_height = 16,
     .ascii_offset = 0,
