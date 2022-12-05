@@ -202,12 +202,13 @@ int main(int argc, char **argv)
 
         timeout_clock = clock();
 
+#if 1
         for(;;) {
-            readret = read(tty_fd, tty_buffer, sizeof(tty_buffer));
+            readret = read(tty_fd, tty_buffer, 1);
             
             if(readret > 0) {
                 timeout_clock = 0;
-                fprintf(stdout, "%s\n", tty_buffer);
+                fprintf(stdout, "%02X ", tty_buffer[0]);
                 continue;
             }
 
@@ -227,8 +228,15 @@ int main(int argc, char **argv)
             break;
         }
     }
+#else
+    while((read(tty_fd, tty_buffer, 1) >= 0))
+        write(STDOUT_FILENO, tty_buffer, 1);
+#endif
 
     close(tty_fd);
 
     return 0;
 }
+
+
+
