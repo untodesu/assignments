@@ -20,7 +20,7 @@ int __attribute__((noreturn)) main(void)
     led_init();
 
     bit = 0;
-    mask = MASK_MIN;
+    mask = MASK_MAX;
     delay = DELAY_MIN;
     for(t = 0, w = 0;; t++) {
         joy_query();
