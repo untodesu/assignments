@@ -1,4 +1,4 @@
-#### PCCL and CCLK
+#### Clock speed
 * Extends the LED blinker project by adding a graphical menu to operate values for the values that shall go to the system registers after an apply operation.
 * The code for changing the rate at which LEDs change their state and their count has been removed as LEDs now only practically prove that the frequency is changed.
 
