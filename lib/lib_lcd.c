@@ -1,3 +1,4 @@
+#include <limits.h>
 #include <lpc17xx.h>
 #include <stdio.h>
 #include <string.h>
@@ -304,7 +305,7 @@ void lcd_bchar(const struct bfont *fnt, uint16_t fg, uint16_t bg, size_t cx, siz
 {
     size_t i, j, k;
     size_t numb = fnt->char_width / 8;
-    const uint8_t *dat = &fnt->data[(ch - fnt->ascii_offset) * fnt->char_height * numb];
+    const uint8_t *dat = &(((const uint8_t *)(fnt->data))[(ch - fnt->ascii_offset) * fnt->char_height * numb]);
 
     cx *= fnt->char_width;
     cy *= fnt->char_height;
@@ -321,7 +322,7 @@ void lcd_bchar(const struct bfont *fnt, uint16_t fg, uint16_t bg, size_t cx, siz
     write_cmd(0x22);
     write_batch_begin();
 
-    if(fnt->char_width > __CHAR_BIT__) {
+    if(fnt->char_width > CHAR_BIT) {
         for(i = 0; i < fnt->char_height; i++) {
             for(j = numb; j != 0; j--)
                 for(k = 8; k != 0; k--)
@@ -348,7 +349,7 @@ void lcd_bcline(const struct bfont *fnt, uint16_t bg, size_t cy)
 
 void lcd_bputs(const struct bfont *fnt, uint16_t fg, uint16_t bg, size_t cx, size_t cy, const char *s)
 {
-    for(; *s; lcd_draw_bchar(fnt, fg, bg, cx++, cy, *s++));
+    for(; *s; lcd_bchar(fnt, fg, bg, cx++, cy, *s++));
 }
 
 void lcd_bprintf(const struct bfont *fnt, uint16_t fg, uint16_t bg, size_t cx, size_t cy, const char *fmt, ...)
