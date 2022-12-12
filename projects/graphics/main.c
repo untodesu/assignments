@@ -1,4 +1,5 @@
 #include <lpc17xx.h>
+#include <stdio.h>
 #include <string.h>
 #include "lib_joy.h"
 #include "lib_lcd.h"
@@ -71,13 +72,13 @@ static void draw_menu(void)
     static int blinks = 1;
 
     if(joy_pressed(JOY_UP)) {
-        GLCD_ClearLn(MENU_INFOLN);
+        lcd_bcline(&IBM_8x16, 0x0000, MENU_INFOLN);
         blinks = 1;
         choice--;
     }
 
     if(joy_pressed(JOY_DN)) {
-        GLCD_ClearLn(MENU_INFOLN);
+        lcd_bcline(&IBM_8x16, 0x0000, MENU_INFOLN);
         blinks = 1;
         choice++;
     }
@@ -90,20 +91,22 @@ static void draw_menu(void)
     if((ticks % 10) == 0)
         blinks = !blinks;
     
-    choice = MACRO_MAX(choice, MENU_BEGIN);
-    choice = MACRO_MIN(choice, SCREEN_COUNT - 1);
+    if(choice < MENU_BEGIN)
+        choice = MENU_BEGIN;
+    if(choice >= SCREEN_COUNT)
+        choice = SCREEN_COUNT - 1;
     
     for(i = MENU_BEGIN; i < SCREEN_COUNT; i++) {
         memset(str, 0, sizeof(str));
         strncat_k(str, (blinks && (i == choice)) ? "> " : "  ", sizeof(str));
         strncat_k(str, menu_items[i], sizeof(str));
-        cfont_puts(&IBM_8x16, 1, i, str);
+        lcd_bputs(&IBM_8x16, 0xFFFF, 0x0000, 1, i, str);
     }
     
-    cfont_puts(&IBM_8x16, 1, MENU_INFOLN, menu_infos[choice]);
+    lcd_bputs(&IBM_8x16, 0xFFFF, 0x0000, 1, MENU_INFOLN, menu_infos[choice]);
     
     snprintf(str, sizeof(str), "0x%-16lX", ticks);
-    cfont_puts(&IBM_8x16, 1, MENU_TIMELN, str);
+    lcd_bputs(&IBM_8x16, 0xFFFF, 0x0000, 1, MENU_TIMELN, str);
 }
 
 static void draw_text(void)
@@ -140,8 +143,8 @@ static void draw_text(void)
     }
 
     unsigned int i;
-    for(i = 0; i < NLINES_8x8; lcd_bvprintf(&IBM_8x8, 0xFFFF, 0x0000, 0, i, "%s", lines_8x8[i]), i++);
-    for(i = 0; i < NLINES_8x16; lcd_bvprintf(&IBM_8x16, 0xFFFF, 0x0000, 0, i + NLINES_8x8 / 2 + 1, "%s", lines_8x16[i]), i++);
+    for(i = 0; i < NLINES_8x8; lcd_bprintf(&IBM_8x8, 0xFFFF, 0x0000, 0, i, "%s", lines_8x8[i]), i++);
+    for(i = 0; i < NLINES_8x16; lcd_bprintf(&IBM_8x16, 0xFFFF, 0x0000, 0, i + NLINES_8x8 / 2 + 1, "%s", lines_8x16[i]), i++);
 }
 
 #define FIG_FRAME 16
