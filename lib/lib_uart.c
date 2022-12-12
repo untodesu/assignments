@@ -1,4 +1,5 @@
 #include <lpc17xx.h>
+#include <stdio.h>
 #include <string.h>
 #include "lib_uart.h"
 
@@ -23,8 +24,8 @@
 
 #define UART_BUFSIZE 64
 static uint8_t uart_buffer[UART_BUFSIZE];
+static const char *uart_discard = NULL;
 static size_t uart_buffer_size = 0;
-static int uart_can_write = 1;
 
 void UART1_IRQHandler(void) 
 {
@@ -44,7 +45,10 @@ void UART1_IRQHandler(void)
         }
 
         if(lsr & LSR_RDR) {
-            uart_buffer[uart_buffer_size] = LPC_UART1->RBR;
+            abyss = LPC_UART1->RBR;
+            if(uart_discard && strchr(uart_discard, abyss))
+                return;
+            uart_buffer[uart_buffer_size] = abyss;
             uart_buffer_size++;
             if (uart_buffer_size >= UART_BUFSIZE)
                 uart_buffer_size = 0;
@@ -56,16 +60,13 @@ void UART1_IRQHandler(void)
 
     /* receive data available */
     if(iir == IIR_RDA) {
-        uart_buffer[uart_buffer_size] = LPC_UART1->RBR;
+        abyss = LPC_UART1->RBR;
+        if(uart_discard && strchr(uart_discard, abyss))
+            return;
+        uart_buffer[uart_buffer_size] = abyss;
         uart_buffer_size++;
         if (uart_buffer_size == UART_BUFSIZE)
             uart_buffer_size = 0;
-        return;
-    }
-
-    /* transmit holding register empty */
-    if (iir == IIR_THRE) {
-        uart_can_write = ((LPC_UART1->LSR & LSR_THRE) ? 1 : 0);
         return;
     }
 }
@@ -73,7 +74,6 @@ void UART1_IRQHandler(void)
 extern uint32_t SystemFrequency;
 void uart_init(size_t speed, uint8_t mode)
 {
-    uint8_t lcr;
     uint32_t divisor, pclk;
 
 	LPC_PINCON->PINSEL4 &= ~0x0000000F;
@@ -107,6 +107,11 @@ void uart_init(size_t speed, uint8_t mode)
     LPC_UART1->IER = IER_THRE | IER_RLS | IER_RBR;
 }
 
+void uart_set_discard(const char *discard)
+{
+    uart_discard = discard;
+}
+
 void uart_write(const void *s, size_t n)
 {
     const uint8_t *sp = s;
@@ -114,9 +119,8 @@ void uart_write(const void *s, size_t n)
     LPC_UART1->IER &= ~IER_RBR;
 
     while(n--) {
-        while(!uart_can_write);
+        while(!(LPC_UART1->LSR & LSR_THRE));
         LPC_UART1->THR = *sp++;
-        uart_can_write = 0;
     }
 
     LPC_UART1->IER |= IER_RBR;
@@ -133,4 +137,24 @@ size_t uart_read(void *s, size_t n)
     }
     
     return 0;
+}
+
+void uart_puts(const char *s)
+{
+    uart_write(s, strlen(s));
+}
+
+void uart_printf(const char *fmt, ...)
+{
+    va_list ap;
+    va_start(ap, fmt);
+    uart_vprintf(fmt, ap);
+    va_end(ap);
+}
+
+void uart_vprintf(const char *fmt, va_list ap)
+{
+    static char buffer[1024] = { 0 };
+    vsnprintf(buffer, sizeof(buffer), fmt, ap);
+    uart_write(buffer, strlen(buffer));
 }
