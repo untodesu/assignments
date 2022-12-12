@@ -62,8 +62,8 @@ struct core_config {
 
 static void set_choice(struct cursor *cur, unsigned int choice)
 {
-    GLCD_DisplayChar(CURSOR_ROW_BASE + cur->choice, CURSOR_COL_BASE, ' ');
-    GLCD_DisplayChar(CURSOR_ROW_BASE + choice, CURSOR_COL_BASE, cur->value);
+    lcd_bchar(&IBM_8x16, 0xFFFF, 0x0000, CURSOR_COL_BASE, CURSOR_ROW_BASE + cur->choice, ' ');
+    lcd_bchar(&IBM_8x16, 0xFFFF, 0x0000, CURSOR_COL_BASE, CURSOR_ROW_BASE + choice, cur->value);
     cur->choice = choice;
 }
 
@@ -87,12 +87,12 @@ static void print_choice_info(unsigned int choice)
             return;
     }
     
-    lcd_bprintf(&IBM_8x16, 0xFFFF, 0x0000, INFO_ROW_BASE + choice, INFO_COL_BASE, "%s", (unsigned char *)buffer);
+    lcd_bprintf(&IBM_8x16, 0xFFFF, 0x0000, INFO_COL_BASE, INFO_ROW_BASE + choice, "%s", (unsigned char *)buffer);
 }
 
 static void print_choice_value(unsigned int choice, unsigned int value)
 {
-    lcd_bprintf(&IBM_8x16, 0xFFFF, 0x0000, VALUE_ROW_BASE + choice, VALUE_COL_BASE, "%-5u", value + 1);
+    lcd_bprintf(&IBM_8x16, 0xFFFF, 0x0000, VALUE_COL_BASE, VALUE_ROW_BASE + choice, "%-5u", value + 1);
 }
 
 static void print_frequency(unsigned int id, float value)
@@ -109,8 +109,8 @@ static void print_frequency(unsigned int id, float value)
             return;
     }
 
-    lcd_bprintf(&IBM_8x16, 0xFFFF, 0x0000, FREQ_ROW_BASE + id, FINF_COL_BASE, "%c", prefix);
-    lcd_bprintf(&IBM_8x16, 0xFFFF, 0x0000, FREQ_ROW_BASE + id, FREQ_COL_BASE, "%-12.03f MHz", value * 1.0e-6f);
+    lcd_bprintf(&IBM_8x16, 0xFFFF, 0x0000, FINF_COL_BASE, FREQ_ROW_BASE + id, "%c", prefix);
+    lcd_bprintf(&IBM_8x16, 0xFFFF, 0x0000, FREQ_COL_BASE, FREQ_ROW_BASE + id, "%-12.03f MHz", value * 1.0e-6f);
 }
 
 static void print_status(unsigned int status)
@@ -127,7 +127,7 @@ static void print_status(unsigned int status)
             return;
     }
     
-    lcd_bprintf(&IBM_8x16, 0xFFFF, 0x0000, STAT_ROW_BASE, STAT_COL_BASE, "%s", buffer);
+    lcd_bprintf(&IBM_8x16, 0xFFFF, 0x0000, STAT_COL_BASE, STAT_ROW_BASE, "%s", buffer);
 }
 
 static void get_config(struct core_config *conf)
