@@ -26,7 +26,8 @@ Initializes the board's `UART1` controller at a fixed and set up baud rate, then
 
 ###### `timer <action>`
 * Controls the timer (see `timer` project for base implementation). The timer's ticks update every 5 milliseconds.
-1. `action` is a timer action.
+1. `action` is a timer action.  
+
 |action|description|
 |------|-----------|
 |`stop`|Stops counting|
