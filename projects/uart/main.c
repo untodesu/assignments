@@ -190,7 +190,8 @@ static void repl_eval(void)
         uart_printf(" clear           - Clear LCD\r\n");
         uart_printf(" timer stop      - Stop on-screen timer\r\n");
         uart_printf(" timer start     - Start on-screen timer (may be still hidden)\r\n");
-        uart_printf(" timer restart   - Restart on-screen timer\r\n");
+        uart_printf(" timer restart   - Clear and start on-screen timer\r\n");
+        uart_printf(" timer clear     - Clear on-screen timer\r\n");
         uart_printf(" timer show      - Show on-screen timer\r\n");
         uart_printf(" timer hide      - Hide on-screen timer\r\n");
         uart_printf(" help            - Print this message\r\n");
