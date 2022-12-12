@@ -39,6 +39,16 @@ Initializes the board's `UART1` controller at a fixed and set up baud rate, then
 ###### `help`
 * Prints a help message containing a list of available commands.
 
+##### Interface description
+```
+XX XX XX ... XX XX
+
+# HH:MM:SS.MMM
+```
+
+1. The first line prints values within the input buffer in hexadecimal form.
+2. The last line prints the timer counter value in human-readable form. The only thing differing from the previous (timer) project is that the timer status is now displayed to the left of the counter. The value of `#` means the timer is not counting while the value of `>` means the timer is in fact counting.
+
 ##### Interface
 ![](image.jpg)
 
