@@ -16,6 +16,7 @@
 
 void UART1_IRQHandler(void);
 void uart_init(size_t speed, uint8_t mode);
+void uart_set_discard(const char *ignore);
 void uart_write(const void *buffer, size_t n);
 size_t uart_read(void *buffer, size_t n);
 
