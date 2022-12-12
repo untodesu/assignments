@@ -45,13 +45,21 @@ static void repl_eval(void)
     argc = 0;
     memset(argv, 0, sizeof(argv));
     for(; i < REPL_BUFFER_SIZE && repl_buffer[i] && repl_buffer[i] != '\r'; i++) {
+        if(argc >= REPL_MAX_ARGV) {
+            /* Overflow!!! */
+            break;
+        }
+        
         if((isspace(repl_buffer[i]) && j) || (j >= (REPL_ARGV_SIZE - 1))) {
             j = 0;
             argc++;
             continue;
         }
-        else if(isspace(repl_buffer[i]))
+        
+        if(isspace(repl_buffer[i])) {
+            /* ignore any other whitespace */
             continue;
+        }
         
         argv[argc][j++] = repl_buffer[i];
     }
