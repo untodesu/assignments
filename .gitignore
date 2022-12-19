@@ -1,2 +1,4 @@
 .vscode/*
 !.vscode/c_cpp_properties.json
+projects/05_uart/host
+projects/05_uart/test.txt
