@@ -1,0 +1,12 @@
+title "L1_1";
+
+subdesign L1_1
+(
+	A:	input;
+	B:	input;
+	Y:	output;
+)
+
+begin
+	Y = !(A # B);
+end;

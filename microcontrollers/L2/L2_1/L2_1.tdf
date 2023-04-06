@@ -1,0 +1,23 @@
+title "L2_1";
+
+subdesign L2_1
+(
+	CLK	: input;
+	D_IN	: input;
+	T_IN	: input;
+	D_OUT	: output;
+	T_OUT	: output;
+)
+
+variable	D_VAL : DFF;
+			T_VAL : TFF;
+
+begin
+	D_VAL.D = D_IN;
+	D_VAL.CLK = CLK;
+	D_OUT = D_VAL.Q;
+	
+	T_VAL.T = T_IN;
+	T_VAL.CLK = CLK;
+	T_OUT = T_VAL.Q;
+end;

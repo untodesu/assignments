@@ -1,0 +1,22 @@
+title "L3_2";
+
+subdesign L3_2(
+    CLK: input;
+    LED: output;
+) %[ end subdesign ]%
+
+variable
+    TR[25..0]: dff;
+begin
+    TR[].CLK = CLK;
+    if(TR[] <= 50000000) then
+        TR[] = TR[] + 1;
+        if(TR[] <= 25000000) then
+            LED = VCC;
+        else
+            LED = GND;
+        end if;
+    else
+        TR[] = 0;
+    end if;
+end;
