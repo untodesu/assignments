@@ -14,10 +14,10 @@ end
 
 print()
 
-N = 12
-T = (N * 1.0e-3)
-t = (N * 1.0e-5)
-dt = (N * 0.8e-5)
+N = 2
+T = (N / 1000.0)
+t = (N / 100000.0)
+dt = (t * 0.8)
 W = (2.0 * math.pi * 200.0 * N)
 print(string.format("N          = % d", N))
 print(string.format("T          = % f", T))
@@ -68,4 +68,3 @@ print()
 delta = math.sqrt((U_out_w^2) + (U_out_l^2) + (U_out_r^2)) / U_out_W
 print(string.format("δ          = % f", delta))
 print()
-
