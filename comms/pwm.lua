@@ -3,18 +3,18 @@
 function J0(x)
     -- First kind Bessel function
     -- of the zero alpha value approximation
-    return (1.0 - (x * x * 0.5))
+    return (1.0 - ((x^2) / 2.0))
 end
 
 function J1(x)
     -- First kind bessel function
     -- of the one alpha value approximation
-    return (x * 0.5)
+    return (x / 2.0)
 end
 
 print()
 
-N = 2
+N = 12
 T = (N / 1000.0)
 t = (N / 100000.0)
 dt = (t * 0.8)
@@ -35,8 +35,8 @@ wl = (w - W)
 wr = (w + W)
 U_in_W = (U_0 * dt / T)
 U_in_w = (2.0 * U_0 * t / T) * (math.sin(w * t / 2.0) / (w * t / 2.0)) * J0(w * dt / 2.0)
-U_in_l = (2.0 * U_0 * t / T) * (math.sin(wl * t / 2.0) / (wl * t / 2.0)) * J1(w * t / 2.0)
-U_in_r = (2.0 * U_0 * t / T) * (math.sin(wr * t / 2.0) / (wr * t / 2.0)) * J1(w * t / 2.0)
+U_in_l = (2.0 * U_0 * t / T) * (math.sin(wl * t / 2.0) / (wl * t / 2.0)) * J1(w * dt / 2.0)
+U_in_r = (2.0 * U_0 * t / T) * (math.sin(wr * t / 2.0) / (wr * t / 2.0)) * J1(w * dt / 2.0)
 print(string.format("U_in_Ω     = % f", U_in_W))
 print(string.format("U_in_ω     = % f", U_in_w))
 print(string.format("U_in_ω-Ω   = % f", U_in_l))
@@ -44,10 +44,10 @@ print(string.format("U_in_ω+Ω   = % f", U_in_r))
 print()
 
 t_cut = (1.0 / W)
-K_w = (1.0 / math.sqrt(1.0 + (w * t_cut)^4))
-K_W = (1.0 / math.sqrt(1.0 + (W * t_cut)^4))
-K_l = (1.0 / math.sqrt(1.0 + (wl * t_cut)^4))
-K_r = (1.0 / math.sqrt(1.0 + (wr * t_cut)^4))
+K_w = (1.0 / math.sqrt(1.0 + (w^4 * t_cut^4)))
+K_W = (1.0 / math.sqrt(1.0 + (W^4 * t_cut^4)))
+K_l = (1.0 / math.sqrt(1.0 + (wl^4 * t_cut^4)))
+K_r = (1.0 / math.sqrt(1.0 + (wr^4 * t_cut^4)))
 print(string.format("t_cut      = % f", t_cut))
 print(string.format("K_ω        = % f dB (% f)", 20.0 * math.log10(K_w), K_w))
 print(string.format("K_Ω        = % f dB (% f)", 20.0 * math.log10(K_W), K_W))
